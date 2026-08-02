@@ -11,6 +11,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: task-tracker-api
     steps:
       - uses: actions/checkout@v4
 
@@ -21,7 +24,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('task-tracker-api/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
 
