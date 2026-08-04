@@ -17,7 +17,16 @@ router = APIRouter()
     status_code=status.HTTP_200_OK,
 )
 def get_health() -> HealthResponse:
-    """Return the application's status and current UTC timestamp."""
+    """Return the application's status and current UTC timestamp.
+
+    Returns:
+        HealthResponse: The current health status and UTC timestamp.
+
+    Example:
+        >>> response = client.get("/health")
+        >>> response.status_code
+        200
+    """
 
     return HealthResponse(
         status="ok",

@@ -30,6 +30,14 @@ def _add_activity(task: TaskResponse, action: str) -> ActivityEntry:
 
 
 def add_task(payload: TaskCreate) -> TaskResponse:
+    """Create and store a new task, recording a "created task" activity entry.
+
+    Args:
+        payload (TaskCreate): The task fields to create.
+
+    Returns:
+        TaskResponse: The newly created task.
+    """
     now = datetime.now(timezone.utc)
     task_id = str(uuid.uuid4())
     task = TaskResponse(
@@ -53,6 +61,18 @@ def get_all_tasks(
     priority: Optional[TaskPriority] = None,
     overdue: Optional[bool] = None,
 ) -> list[TaskResponse]:
+    """List stored tasks, optionally filtered by status, priority, or overdue state.
+
+    Args:
+        status (TaskStatus | None): Only return tasks with this status.
+        priority (TaskPriority | None): Only return tasks with this
+            priority.
+        overdue (bool | None): Only return tasks whose overdue state (due
+            before today and not Done) matches this value.
+
+    Returns:
+        list[TaskResponse]: The tasks matching the given filters.
+    """
     tasks = list(_tasks.values())
     if status is not None:
         tasks = [task for task in tasks if task.status == status]
@@ -70,10 +90,31 @@ def get_all_tasks(
 
 
 def get_task_by_id(task_id: str) -> Optional[TaskResponse]:
+    """Look up a task by its id.
+
+    Args:
+        task_id (str): The id of the task to look up.
+
+    Returns:
+        Optional[TaskResponse]: The matching task, or None if no task with
+            the given id exists.
+    """
     return _tasks.get(task_id)
 
 
 def update_task(task_id: str, payload: TaskUpdate) -> Optional[TaskResponse]:
+    """Apply partial updates to a task and record an activity entry.
+
+    Args:
+        task_id (str): The id of the task to update.
+        payload (TaskUpdate): The fields to update; unset fields are
+            ignored.
+
+    Returns:
+        Optional[TaskResponse]: None if no task with the given id exists;
+            otherwise the task, unchanged if no fields differed from their
+            current values, or updated with a recorded activity entry.
+    """
     task = _tasks.get(task_id)
     if task is None:
         return None
@@ -110,6 +151,14 @@ def update_task(task_id: str, payload: TaskUpdate) -> Optional[TaskResponse]:
 
 
 def delete_task(task_id: str) -> bool:
+    """Delete a task by its id and record a "deleted task" activity entry.
+
+    Args:
+        task_id (str): The id of the task to delete.
+
+    Returns:
+        bool: True if the task was found and deleted, False otherwise.
+    """
     if task_id not in _tasks:
         return False
     _add_activity(_tasks[task_id], "deleted task")
@@ -118,6 +167,16 @@ def delete_task(task_id: str) -> bool:
 
 
 def get_activity(task_id: Optional[str] = None) -> list[ActivityEntry]:
+    """List recorded activity entries, optionally filtered by task.
+
+    Args:
+        task_id (str | None): Only return activity entries for this task
+            id.
+
+    Returns:
+        list[ActivityEntry]: The matching activity entries, sorted by
+            created_at in descending order.
+    """
     entries = _activity
     if task_id is not None:
         entries = [entry for entry in entries if entry.task_id == task_id]

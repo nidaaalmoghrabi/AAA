@@ -42,6 +42,14 @@ app.add_middleware(
 
 
 def seed_demo_tasks() -> None:
+    """Seed the in-memory task store with demo tasks for local development runs.
+
+    Skipped when running under pytest, when APP_ENV is set to "test", or when
+    the store already contains tasks.
+
+    Returns:
+        None
+    """
     if os.getenv("APP_ENV") == "test" or "pytest" in sys.modules:
         return
 
@@ -86,6 +94,16 @@ app.include_router(router)
 
 @app.get("/", tags=["frontend"])
 def serve_frontend() -> FileResponse:
+    """Serve the Kanban board frontend HTML file.
+
+    Returns:
+        FileResponse: The frontend/index.html file contents.
+
+    Example:
+        >>> response = client.get("/")
+        >>> response.status_code
+        200
+    """
     frontend_path = Path(__file__).resolve().parent.parent / "frontend" / "index.html"
     return FileResponse(frontend_path)
 
@@ -96,16 +114,61 @@ def list_tasks(
     priority: TaskPriority | None = None,
     overdue: bool | None = None,
 ) -> list[TaskResponse]:
+    """List tasks, optionally filtered by status, priority, or overdue state.
+
+    Args:
+        status (TaskStatus | None): Only return tasks with this status.
+        priority (TaskPriority | None): Only return tasks with this priority.
+        overdue (bool | None): Only return tasks whose overdue state matches
+            this value.
+
+    Returns:
+        list[TaskResponse]: The tasks matching the given filters.
+
+    Example:
+        >>> response = client.get("/tasks", params={"status": "ToDo"})
+        >>> response.status_code
+        200
+    """
     return storage.get_all_tasks(status=status, priority=priority, overdue=overdue)
 
 
 @app.post("/tasks", response_model=TaskResponse, status_code=status.HTTP_201_CREATED, tags=["tasks"])
 def create_task(payload: TaskCreate) -> TaskResponse:
+    """Create a new task.
+
+    Args:
+        payload (TaskCreate): The task fields to create.
+
+    Returns:
+        TaskResponse: The newly created task.
+
+    Example:
+        >>> response = client.post("/tasks", json={"title": "Write docs"})
+        >>> response.status_code
+        201
+    """
     return storage.add_task(payload)
 
 
 @app.get("/tasks/{task_id}", response_model=TaskResponse, tags=["tasks"])
 def get_task(task_id: str) -> TaskResponse:
+    """Retrieve a single task by its id.
+
+    Args:
+        task_id (str): The id of the task to retrieve.
+
+    Returns:
+        TaskResponse: The matching task.
+
+    Raises:
+        HTTPException: 404 if no task with the given id exists.
+
+    Example:
+        >>> response = client.get("/tasks/123")
+        >>> response.status_code
+        200
+    """
     task = storage.get_task_by_id(task_id)
     if task is None:
         raise HTTPException(status_code=404, detail=f"Task with id {task_id} not found")
@@ -114,16 +177,59 @@ def get_task(task_id: str) -> TaskResponse:
 
 @app.get("/activity", response_model=list[ActivityEntry], tags=["activity"])
 def list_activity() -> list[ActivityEntry]:
+    """List all recorded activity entries.
+
+    Returns:
+        list[ActivityEntry]: All activity entries, most recent first.
+
+    Example:
+        >>> response = client.get("/activity")
+        >>> response.status_code
+        200
+    """
     return storage.get_activity()
 
 
 @app.get("/tasks/{task_id}/activity", response_model=list[ActivityEntry], tags=["activity"])
 def list_task_activity(task_id: str) -> list[ActivityEntry]:
+    """List activity entries for a single task.
+
+    Args:
+        task_id (str): The id of the task to list activity for.
+
+    Returns:
+        list[ActivityEntry]: The activity entries for the task, most recent
+            first.
+
+    Example:
+        >>> response = client.get("/tasks/123/activity")
+        >>> response.status_code
+        200
+    """
     return storage.get_activity(task_id=task_id)
 
 
 @app.patch("/tasks/{task_id}", response_model=TaskResponse, tags=["tasks"])
 def update_task(task_id: str, payload: TaskUpdate) -> TaskResponse:
+    """Update an existing task.
+
+    Args:
+        task_id (str): The id of the task to update.
+        payload (TaskUpdate): The fields to update.
+
+    Returns:
+        TaskResponse: The updated task.
+
+    Raises:
+        HTTPException: 404 if no task with the given id exists.
+        HTTPException: 422 if payload.status is set and the status
+            transition from the task's current status is not allowed.
+
+    Example:
+        >>> response = client.patch("/tasks/123", json={"status": "InProgress"})
+        >>> response.status_code
+        200
+    """
     if payload.status is not None:
         existing = storage.get_task_by_id(task_id)
         if existing is None:
@@ -138,5 +244,21 @@ def update_task(task_id: str, payload: TaskUpdate) -> TaskResponse:
 
 @app.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["tasks"])
 def delete_task(task_id: str) -> None:
+    """Delete a task by its id.
+
+    Args:
+        task_id (str): The id of the task to delete.
+
+    Returns:
+        None
+
+    Raises:
+        HTTPException: 404 if no task with the given id exists.
+
+    Example:
+        >>> response = client.delete("/tasks/123")
+        >>> response.status_code
+        204
+    """
     if not storage.delete_task(task_id):
         raise HTTPException(status_code=404, detail=f"Task with id {task_id} not found")

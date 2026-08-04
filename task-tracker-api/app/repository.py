@@ -10,13 +10,21 @@ class InMemoryRepository(Generic[ItemType]):
     """Store application objects in memory using integer identifiers."""
 
     def __init__(self) -> None:
-        """Initialize an empty repository."""
+        """Initialize an empty repository.
+
+        Returns:
+            None
+        """
 
         self._items: dict[int, ItemType] = {}
         self._next_id: int = 1
 
     def clear(self) -> None:
-        """Remove all stored objects and reset ID generation."""
+        """Remove all stored objects and reset ID generation.
+
+        Returns:
+            None
+        """
 
         self._items.clear()
         self._next_id = 1
