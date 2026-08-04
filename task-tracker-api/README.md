@@ -1,6 +1,6 @@
 # Task Tracker API
 
-Task Tracker API is a small REST API learning project built with Python and FastAPI. It provides task CRUD endpoints, a simple browser-based task board, due dates with overdue filtering, and an in-memory activity log without authentication, database storage, Docker, or cloud deployment.
+Task Tracker API is a small REST API learning project built with Python and FastAPI. It provides task CRUD endpoints, a simple browser-based task board, due dates with overdue filtering, and an in-memory activity log without authentication, database storage, or cloud deployment.
 
 ## Features
 
@@ -39,10 +39,23 @@ task-tracker-api/
 |   |-- test_health.py
 |   `-- test_tasks.py
 |
+|-- .dockerignore
 |-- .env.example
+|-- Dockerfile
 |-- README.md
 `-- requirements.txt
 ```
+
+Module responsibilities:
+
+- `app/main.py`: FastAPI app instance, CORS middleware, demo data seeding, and the task/activity route handlers.
+- `app/models.py`: Pydantic request/response schemas and field validation (e.g. title trimming).
+- `app/business_rules.py`: Status-transition validation (`validate_status_transition`).
+- `app/storage.py`: In-memory task and activity store.
+- `app/repository.py`: Generic in-memory repository base class.
+- `app/routes.py`: The `/health` route.
+
+Every public function and route handler in `app/` has a Google-style docstring (summary, `Args`, `Returns`, `Raises`, and an `Example` for route handlers). Keep new public functions documented the same way; private helpers (leading underscore) are exempt.
 
 ## Create a Virtual Environment
 
@@ -236,6 +249,32 @@ For more detailed output, run:
 ```bash
 python -m pytest -v
 ```
+
+## Run with Docker
+
+Build the image from the project root:
+
+```bash
+docker build -t task-tracker-api .
+```
+
+Run the container:
+
+```bash
+docker run --rm -p 8000:8000 task-tracker-api
+```
+
+The image is a multi-stage build (builder + slim runtime), runs as a non-root `app` user, and exposes a container `HEALTHCHECK` against `GET /health`. The API and frontend are then available at `http://127.0.0.1:8000`, same as the local dev server.
+
+## Continuous Integration
+
+Pushes and pull requests run the `c1` GitHub Actions workflow, which installs dependencies and runs `python -m pytest -v --tb=short` against Python 3.11. The workflow file lives at the repository root (`.github/workflows/c1.yml`, one level above `task-tracker-api/`) rather than inside this project directory, because GitHub only triggers workflows found under `.github/workflows` at the repo root, and sets `task-tracker-api` as its working directory.
+
+## Business Rules
+
+- Valid task status transitions: `ToDo -> InProgress`, `InProgress -> Done`, `Done -> InProgress`.
+- Invalid transitions (e.g. `ToDo -> Done`, `Done -> ToDo`, or setting the same status again) return `422`.
+- `title` is required, trimmed, and must not be blank or exceed 200 characters.
 
 ## Stop the Server
 
